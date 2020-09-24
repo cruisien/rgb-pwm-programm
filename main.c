@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <avr/io.h>
-#include "avr/eeprom.h"
+#include <avr/eeprom.h>
+
+
 
 #define GRUEN_MINUS !(PINC & (1<<PC0))
 #define GRUEN_PLUS !(PINC & (1<<PC1))
@@ -8,16 +10,20 @@
 #define ROT_PLUS !(PINC & (1<<PC3))
 #define BLAU_MINUS !(PINC & (1<<PC4))
 #define BLAU_PLUS !(PINC & (1<<PC5))
-
+#define ROTADDR 0
+#define BLAUADDR 8//addressen eprom speicherung wenn eprom ""verbraucht"" um alles um 8 versetzen bei 16grüen wird rot also 24 usw...
+#define GRUENADDR 16
 
 
 int main(void)
 {
+	
 	uint8_t counterPWM = 0; //counter für PWM
 	uint16_t clockteiler = 0;//counter zur verlangsamug der tasterabfragrate auf 1000HZ
-	uint8_t blau = 255;//farbwert blau
+	uint16_t teilwert = 4000;//wider holungen pwm pro abfrage tasten
+	uint8_t blau = 30;//farbwert blau
 	uint8_t rot = 255;//farbwert rot
-	uint8_t gruen = 255;//farbwert gruen
+	uint8_t gruen =25;//farbwert gruen
 	uint8_t rotaus = 0;//rot de/aktiviert
 	uint8_t blauaus = 0;//blau de/aktiviert
 	uint8_t gruenaus = 0;//gruen de/aktiviert
@@ -25,23 +31,37 @@ int main(void)
 	uint8_t tasten [6] = {0, 0, 0, 0, 0, 0};
 	DDRD |= (1<<PD0) | (1<<PD1) | (1<<PD2);//aktivierung ausgänge rgb
 	DDRC &= ~((1<<PC0) | (1<<PC1) | (1<<PC2) | (1<<PC3) | (1<<PC4) | (1<<PC5));//aktivierung eingänge taster
+	
+	rot = eeprom_read_byte((uint8_t*)ROTADDR);
+	gruen = eeprom_read_byte((uint8_t*)GRUENADDR);
+	blau = eeprom_read_byte((uint8_t*)BLAUADDR);
+	
 	while(1)
 	{ 	
 		
 		
-		if (clockteiler == 12500){//reset counter
+		if (clockteiler == teilwert){//reset counter
 			clockteiler = 0;
 		}
-			
+		
+		if(rotaus == 1){
+			rot = 0;
+		}	
+		if(blauaus == 1){
+			blau = 0;
+		}
+		if(gruenaus == 1){
+			gruen = 0;
+		}	
 			
 		if(counterPWM == 0){
-			if((rot > 0) & (rotaus == 0)){
+			if(rot > 0){
 				PORTD |= (1<<PD1);
 			}//ende rot ein
-			if((blau > 0) & (blauaus == 0)){
+			if(blau > 0){
 				PORTD |= (1<<PD2);
 			}
-			if((gruen > 0) & (gruenaus == 0)){
+			if(gruen > 0){
 				PORTD |= (1<<PD0);
 			}//ende gruen ein
 			
@@ -70,14 +90,22 @@ int main(void)
 		
 
 		
-		if (clockteiler == 12500){//reduzierung auf 650 hz
+		if (clockteiler == teilwert){//reduzierung auf 650 hz
 			
 			if ((GRUEN_MINUS == 1) & (ROT_MINUS == 1) & (BLAU_MINUS == 1)){
-				//save to eprom------------------------------------------------
+				while((GRUEN_MINUS == 1) & (ROT_MINUS == 1) & (BLAU_MINUS == 1)){
+				}
+				eeprom_write_byte((uint8_t*)ROTADDR, rot);
+				eeprom_write_byte((uint8_t*)GRUENADDR, gruen);
+				eeprom_write_byte((uint8_t*)BLAUADDR, blau);
 			}//ende save eeprom
 			else if ((GRUEN_PLUS == 1) & (ROT_PLUS == 1) & (BLAU_PLUS == 1)){
-				//clera eeprom-------------------------------------------------
-			}//clear eeprom
+				while((GRUEN_PLUS == 1) & (ROT_PLUS == 1) & (BLAU_PLUS == 1)){
+				}
+				eeprom_write_byte((uint8_t*)ROTADDR, 255);
+				eeprom_write_byte((uint8_t*)GRUENADDR, 25);
+				eeprom_write_byte((uint8_t*)BLAUADDR, 30);
+			}//ende reset eeprom to defined deafult start value
 			else if(1 == 1){
 			if (GRUEN_MINUS == 1){
 				if((timertasten[0] < 650) & (timertasten[0] != 0)){
