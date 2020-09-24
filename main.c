@@ -4,12 +4,18 @@
 
 
 
-#define GRUEN_MINUS !(PINC & (1<<PC0))
-#define GRUEN_PLUS !(PINC & (1<<PC1))
-#define ROT_MINUS !(PINC & (1<<PC2))
-#define ROT_PLUS !(PINC & (1<<PC3))
-#define BLAU_MINUS !(PINC & (1<<PC4))
-#define BLAU_PLUS !(PINC & (1<<PC5))
+#define GRUEN_MINUS !(PINB & (1<<PB6))
+#define GRUEN_PLUS !(PIND & (1<<PD4))
+#define ROT_MINUS !(PIND & (1<<PD6))
+#define ROT_PLUS !(PIND & (1<<PD3))
+#define BLAU_MINUS !(PINB & (1<<PB7))
+#define BLAU_PLUS !(PIND & (1<<PD5))
+#define ROT PORTB |= (1<<PB2)
+#define GRUEN PORTB |= (1<<PB1)
+#define BLAU PORTB |= (1<<PB3)
+#define NROT PORTB &= ~(1<<PB2)
+#define NGRUEN PORTB &= ~(1<<PB1)
+#define NBLAU PORTB &= ~(1<<PB3)
 #define ROTADDR 0
 #define BLAUADDR 8//addressen eprom speicherung wenn eprom ""verbraucht"" um alles um 8 versetzen bei 16grüen wird rot also 24 usw...
 #define GRUENADDR 16
@@ -24,13 +30,14 @@ int main(void)
 	uint8_t blau = 30;//farbwert blau
 	uint8_t rot = 255;//farbwert rot
 	uint8_t gruen =25;//farbwert gruen
-	uint8_t rotaus = 0;//rot de/aktiviert
-	uint8_t blauaus = 0;//blau de/aktiviert
-	uint8_t gruenaus = 0;//gruen de/aktiviert
+	uint8_t rotaus = 255;//rot de/aktiviert
+	uint8_t blauaus = 40;//blau de/aktiviert
+	uint8_t gruenaus = 25;//gruen de/aktiviert
 	uint16_t timertasten [6] = {0, 0, 0, 0, 0, 0};
 	uint8_t tasten [6] = {0, 0, 0, 0, 0, 0};
-	DDRD |= (1<<PD0) | (1<<PD1) | (1<<PD2);//aktivierung ausgänge rgb
-	DDRC &= ~((1<<PC0) | (1<<PC1) | (1<<PC2) | (1<<PC3) | (1<<PC4) | (1<<PC5));//aktivierung eingänge taster
+	DDRB |= (1<<PB1) | (1<<PB2) | (1<<PB3);//aktivierung ausgänge rgb
+	DDRD &= ~((1<<PD3) | (1<<PD4) | (1<<PD5) | (1<<PD6));//aktivierung eingänge taster
+	DDRB &= ~((1<<PB6) | (1<<PB7));//aktivierung taster
 	
 	rot = eeprom_read_byte((uint8_t*)ROTADDR);
 	gruen = eeprom_read_byte((uint8_t*)GRUENADDR);
@@ -56,13 +63,13 @@ int main(void)
 			
 		if(counterPWM == 0){
 			if(rot > 0){
-				PORTD |= (1<<PD1);
+				ROT;
 			}//ende rot ein
 			if(blau > 0){
-				PORTD |= (1<<PD2);
+				BLAU;
 			}
 			if(gruen > 0){
-				PORTD |= (1<<PD0);
+				GRUEN;
 			}//ende gruen ein
 			
 			
@@ -70,15 +77,15 @@ int main(void)
 		}//ende counter pwm
 		
 		if(counterPWM > gruen){//gruen ausschalten
-			PORTD &= ~(1<<PD0);
+			NGRUEN;
 		}
 		
 		if(counterPWM > blau){//blau ausschalten
-			PORTD &= ~(1<<PD2);
+			NBLAU;
 		}
 		
 		if(counterPWM > rot){//rot ausschalten
-			PORTD &= ~(1<<PD1);
+			NROT;
 		}
 		counterPWM++;
 		clockteiler++;
